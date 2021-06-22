@@ -2,7 +2,6 @@
 
 #include <SPI.h>                          // Bibliotheken einbinden, um das OLED Display ansteuern zu koennen
 #include <Wire.h>
-
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
@@ -26,7 +25,7 @@ CRGB leds[1];                              // Instanziieren der LED
 
 // ========================  hier deinen API-Key eintragen!!!  ============================================================================================================
 const String city = "Oldenburg";
-const String api_key = "c360ff43073b3f88cc8b8693eb0b5e96";    // mein Open-Weather-Map-API-Schluessel
+const String api_key = "c360ff43073b3f88cc8b8693eb0b5e96";    // dein Open-Weather-Map-API-Schluessel, kostenlos beziehbar ueber https://openweathermap.org/
 // ========================================================================================================================================================================
 
 int weatherID = 0;
@@ -66,22 +65,28 @@ void setup() {
 }
 
 
+
+
+
+
 void loop() {
-  // folgende if-Bedingung sorgt dafuer, dass nur alle 30 Minuten (also 1.800.000 ms) das aktuelle Wetter abgefragt wird
+  // folgende if-Bedingung sorgt dafuer, dass nur alle 30 Minuten (also 1.800.000 ms) das aktuelle Wetter abgefragt wird; dies spart Strom und Web-Traffic
   if (millis() - lastcheck >= 1800000) {            // millis() gibt die Zeit aus, die seit dem Start des Mikrocontrollers verstrichen ist
     getCurrentWeatherConditions();
     lastcheck = millis();                           // lastcheck auf aktuelle Systemzeit setzen
     updateDisplay();
   }
 
-  // unten werden nun je nach Wetterbedingung eine Funktion aufgerufen, die die Lampe unterschiedlich leuchten laesst
-  if (weatherID == 800) LED_effect_clearSky();                 
+  // unten werden nun je nach Wetterbedingung (die in der Variablen "weatherID_shortened" steckt) eine Funktion aufgerufen, die die Lampe unterschiedlich leuchten laesst
+  if (weatherID == 800) LED_effect_clearSky();                  // nur wenn die "weatherID" 800 ist, ist es klar/heiter/sonnig...
   else {
-    switch (weatherID_shortened) {    
-      case 2: LED_effect_thunderstorm(); break;    // "Gewitter"
-      case 3: LED_effect_drizzleRain(); break;       // "Nieselregen"
-      case 4: LED_effect_Schnee(); break;       // "Schnee"
-      case 5: LED_effect_Fog(); break;        // "Nebel"
+    switch (weatherID_shortened) {                              // sonst ist es je nach Hunderterbereich unterschiedlich: Werte hierfuer entstammen aus https://openweathermap.org/weather-conditions
+      case 2: LED_effect_Thunder(); break;    // "Gewitter"
+      case 3: LED_effect_rain(); break;       // "Regen"
+      case 5: LED_effect_sun (); break;       // "Regen"
+      case 6: LED_effect_snow(); break;       // "Schnee"
+      case 7: LED_effect_fog(); break;        // "Nebel"
+      case 8: LED_effect_cloudy(); break;     // "Wolken"
     }
   }
 
@@ -89,7 +94,10 @@ void loop() {
 
 }
 
+
+
 // ========================================================================================================================================================================
+/* es folgen Funktionen, die von der Lampe benoetigt werden*/
 
 
 void updateDisplay() {                                                                    // Funktion zum Aktualisieren des Inhalts auf dem Display
@@ -140,7 +148,7 @@ void updateDisplay() {                                                          
 void getCurrentWeatherConditions() {
   Serial.print("connecting to "); Serial.println("api.openweathermap.org");
   if (client.connect("api.openweathermap.org", 80)) {
-    client.println("GET /data/2.5/weather?q="+ city +",DE&units=metric&lang=de&APPID="+ api_key );
+    client.println("GET /data/2.5/weather?q="+ city +",DE&units=metric&lang=de&APPID="+ api_key);
     client.println("Host: api.openweathermap.org");
     client.println("Connection: close");
     client.println();
@@ -168,9 +176,11 @@ void getCurrentWeatherConditions() {
   weatherID_shortened = weatherID / 100;
   switch (weatherID_shortened) {                                                 // Werte hierfuer stammen aus https://openweathermap.org/weather-conditions
     case 2: weatherforecast_shortened = "Gewitter"; break;
-    case 3: weatherforecast_shortened = "Nieselregen"; break;
-    case 4: weatherforecast_shortened = "Schnee"; break;
-    case 5: weatherforecast_shortened = "Nebel"; break;
+    case 3: weatherforecast_shortened = "Regen."; break;
+    case 5: weatherforecast_shortened = "Sonne"; break;
+    case 6: weatherforecast_shortened = "Schnee"; break;
+    case 7: weatherforecast_shortened = "Nebel"; break;
+    case 8: weatherforecast_shortened = "Wolken"; break;
     default: weatherforecast_shortened = ""; break;                              // wenn kein anderer Wert passt (z.B. weil Server nicht antwortet), ist die weatherlage ungewiss
   } if (weatherID == 800) weatherforecast_shortened = "klar";                    // nur fuer den Fall, dass die weather-ID genau 800 ist, ist es "klar"
 }
@@ -195,43 +205,54 @@ void fade(int led_position, uint16_t duration, uint16_t delay_val, uint16_t star
   }
   leds[led_position] = CRGB(endR, endG, endB);
 }
-//eure effekte einfugen
+// effekte einfugen
 
 void LED_effect_clearSky() { // Effekt, der angezeigt wird, wenn der Himmel klar ist
   FastLED.setBrightness(255);
   leds[0] = CRGB::Blue;
   FastLED.show();
   delay(500);
-  Serial.println("Effekt- Clear sky");
-}
-
-void LED_effect_thunderstorm() { // Effekt für Gewitter
-  FastLED.setBrightness(255);
-  leds[0] = CRGB::Red;
+  leds[0] = CRGB::Black;
   FastLED.show();
   delay(500);
-   Serial.println("Effekt-thunderstorm");
 }
 
-void LED_effect_drizzleRain() { // Effekt für Nieselregen
-  FastLED.setBrightness(200);
+void LED_effect_Thunder() {
+  FastLED.setBrightness(255);
+  leds[0] = CRGB::Purple;
+  FastLED.show();
+  delay(500);
+   Serial.println("Thunder Effekt");
+}
+
+void LED_effect_rain() {
+ FastLED.setBrightness(200);
   leds[0] = CRGB::Green;
   FastLED.show();
   delay(500);
-  Serial.println("Effekt-drizzle");
+  Serial.println("Rain Effekt");
 }
 
-void LED_effect_Schnee() { // Effekt für Schnee
-  FastLED.setBrightness(255);
-  leds[0] = CRGB:: Purple;
+void LED_effect_sun() {
+FastLED.setBrightness(100);
+  leds[0] = CRGB:: Yellow;
+  FastLED.show();
   delay(500);
-  Serial.println("Effekt- snow");
+  Serial.println("Sonne Effekt");
 }
 
-void LED_effect_Fog() { // Effekt für Nebel 
-  FastLED.setBrightness(100);
+void LED_effect_fog() {
+ FastLED.setBrightness(100);
   leds[0] = CRGB:: Gray;
   FastLED.show();
   delay(500);
-  Serial.println("Effekt- sleet");
+  Serial.println("Sleet Effekt");
+}
+
+void LED_effect_cloudy() {
+FastLED.setBrightness(100);
+  leds[0] = CRGB:: White;
+  FastLED.show();
+  delay(500);
+  Serial.println("Cloudy Effekt");
 }
